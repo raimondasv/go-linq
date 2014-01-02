@@ -26,28 +26,28 @@ type parallelValueResult struct {
 //
 // Example:
 // 	results, err := From(slice).AsParallel().Select(something).Results()
-func (q ParallelQuery) Results() ([]T, error) {
+func (q *ParallelQuery) Results() ([]T, error) {
 	return q.values, q.err
 }
 
 // AsSequential returns a Query from the same source and the query functions
 // can be executed in serial for each element of the source sequence.
 // This is for undoing AsParallel().
-func (q ParallelQuery) AsSequential() Query {
-	return Query{values: q.values, err: q.err}
+func (q *ParallelQuery) AsSequential() *Query {
+	return &Query{values: q.values, err: q.err}
 }
 
 // copyMeta copies all fields of ParallelQuery except 'values' into a new
 // instance. This should be used for retaining options e.g. 'ordered'.
-func (q ParallelQuery) copyMeta() ParallelQuery {
-	return ParallelQuery{err: q.err,
+func (q *ParallelQuery) copyMeta() *ParallelQuery {
+	return &ParallelQuery{err: q.err,
 		ordered: q.ordered}
 }
 
 // copyMetaWithValues copies all fields of ParallelQuery. This should be used
 // for retaining options e.g. 'ordered' as well as values.
-func (q ParallelQuery) copyMetaWithValues() ParallelQuery {
-	return ParallelQuery{err: q.err,
+func (q *ParallelQuery) copyMetaWithValues() *ParallelQuery {
+	return &ParallelQuery{err: q.err,
 		ordered: q.ordered,
 		values:  q.values}
 }
@@ -59,7 +59,7 @@ func (q ParallelQuery) copyMetaWithValues() ParallelQuery {
 // Not applicable for all query methods and comes
 // with a performance penalty in some queries, please refer to
 // http://msdn.microsoft.com/en-us/library/dd460677(v=vs.110).aspx .
-func (q ParallelQuery) AsOrdered() (p ParallelQuery) {
+func (q *ParallelQuery) AsOrdered() (p *ParallelQuery) {
 	p = q.copyMetaWithValues()
 	p.ordered = true
 	return
@@ -69,7 +69,7 @@ func (q ParallelQuery) AsOrdered() (p ParallelQuery) {
 // query to preserve the original order.
 //
 // See AsOrdered() for remarks.
-func (q ParallelQuery) AsUnordered() (p ParallelQuery) {
+func (q *ParallelQuery) AsUnordered() (p *ParallelQuery) {
 	p = q.copyMetaWithValues()
 	p.ordered = false
 	return
@@ -92,7 +92,7 @@ func (q ParallelQuery) AsUnordered() (p ParallelQuery) {
 // 	flying, err := From(animals).AsParallel().Where(func (a T) (bool, error){
 //		return a.(*Animal).IsFlying, nil
 // 	}).Results()
-func (q ParallelQuery) Where(f func(T) (bool, error)) (r ParallelQuery) {
+func (q *ParallelQuery) Where(f func(T) (bool, error)) (r *ParallelQuery) {
 	r = q.copyMeta()
 	if r.err != nil {
 		return r
@@ -158,7 +158,7 @@ func (q ParallelQuery) Where(f func(T) (bool, error)) (r ParallelQuery) {
 // 	names, err := From(animals).AsParallel().Select(func (a T) (T, error){
 //		return a.(*Animal).Name, nil
 // 	}).Results()
-func (q ParallelQuery) Select(f func(T) (T, error)) (r ParallelQuery) {
+func (q *ParallelQuery) Select(f func(T) (T, error)) (r *ParallelQuery) {
 	r = q.copyMeta()
 	if r.err != nil {
 		return r
@@ -199,7 +199,7 @@ func (q ParallelQuery) Select(f func(T) (T, error)) (r ParallelQuery) {
 // 	anyOver18, err := From(students).AsParallel().Where(func (s T)(bool, error){
 //		return s.(*Person).Age > 18, nil
 //	}).Any()
-func (q ParallelQuery) Any() (exists bool, err error) {
+func (q *ParallelQuery) Any() (exists bool, err error) {
 	return len(q.values) > 0, q.err
 }
 
@@ -210,7 +210,7 @@ func (q ParallelQuery) Any() (exists bool, err error) {
 // 	anyOver18, err := From(students).AsParallel().AnyWith(func (s T)(bool, error){
 //		return s.(*Person).Age > 18, nil
 //	})
-func (q ParallelQuery) AnyWith(f func(T) (bool, error)) (exists bool, err error) {
+func (q *ParallelQuery) AnyWith(f func(T) (bool, error)) (exists bool, err error) {
 	if q.err != nil {
 		err = q.err
 		return
@@ -254,7 +254,7 @@ func (q ParallelQuery) AnyWith(f func(T) (bool, error)) (exists bool, err error)
 // 	allOver18, err := From(students).AsParallel().All(func (s T)(bool, error){
 //		return s.(*Person).Age > 18, nil
 //	})
-func (q ParallelQuery) All(f func(T) (bool, error)) (all bool, err error) {
+func (q *ParallelQuery) All(f func(T) (bool, error)) (all bool, err error) {
 	if q.err != nil {
 		err = q.err
 		return
@@ -295,7 +295,7 @@ func (q ParallelQuery) All(f func(T) (bool, error)) (all bool, err error) {
 //	if err == nil {
 //		// use admin.(*Person)
 // 	}
-func (q ParallelQuery) Single(f func(T) (bool, error)) (single T, err error) {
+func (q *ParallelQuery) Single(f func(T) (bool, error)) (single T, err error) {
 	if q.err != nil {
 		err = q.err
 		return
@@ -343,7 +343,7 @@ func (q ParallelQuery) Single(f func(T) (bool, error)) (single T, err error) {
 // 	over18, err := From(students).AsParallel().Where(func (s T)(bool, error){
 //		return s.(*Person).Age > 18, nil
 //	}).Count()
-func (q ParallelQuery) Count() (count int, err error) {
+func (q *ParallelQuery) Count() (count int, err error) {
 	return len(q.values), q.err
 }
 
@@ -355,7 +355,7 @@ func (q ParallelQuery) Count() (count int, err error) {
 // 	over18, err := From(students).AsParallel().CountBy(func (s T)(bool, error){
 //		return s.(*Person).Age > 18, nil
 //	})
-func (q ParallelQuery) CountBy(f func(T) (bool, error)) (c int, err error) {
+func (q *ParallelQuery) CountBy(f func(T) (bool, error)) (c int, err error) {
 	if q.err != nil {
 		err = q.err
 		return

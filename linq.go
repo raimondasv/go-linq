@@ -28,9 +28,9 @@ type sortableQuery struct {
 	less   func(this, that T) bool
 }
 
-func (q sortableQuery) Len() int           { return len(q.values) }
-func (q sortableQuery) Swap(i, j int)      { q.values[i], q.values[j] = q.values[j], q.values[i] }
-func (q sortableQuery) Less(i, j int) bool { return q.less(q.values[i], q.values[j]) }
+func (q *sortableQuery) Len() int           { return len(q.values) }
+func (q *sortableQuery) Swap(i, j int)      { q.values[i], q.values[j] = q.values[j], q.values[i] }
+func (q *sortableQuery) Less(i, j int) bool { return q.less(q.values[i], q.values[j]) }
 
 var (
 	// ErrNilFunc returned when a predicate, selector or comparer is nil
@@ -69,7 +69,7 @@ var (
 // Note: Although it looks like a T (interface{}) input, you should pass a
 // slice of any type. There is a hack there to accept any type of slice, which
 // is a workaround of type system of Go.
-func From(input T) Query {
+func From(input T) *Query {
 	var e error
 	if input == nil {
 		e = ErrNilInput
@@ -81,7 +81,7 @@ func From(input T) Query {
 		out = nil
 	}
 
-	return Query{values: out, err: e}
+	return &Query{values: out, err: e}
 }
 
 // Results evaluates the query and returns the results as T slice.
@@ -89,7 +89,7 @@ func From(input T) Query {
 //
 // Example:
 // 	results, err := From(slice).Select(something).Results()
-func (q Query) Results() ([]T, error) {
+func (q *Query) Results() ([]T, error) {
 	return q.values, q.err
 }
 
@@ -99,8 +99,8 @@ func (q Query) Results() ([]T, error) {
 // This is an abstraction to not to break user code. If the query method you are
 // looking for is not available on ParallelQuery, you can go back to serialized
 // Query using AsSequential() method.
-func (q Query) AsParallel() ParallelQuery {
-	return ParallelQuery{values: q.values, err: q.err}
+func (q *Query) AsParallel() *ParallelQuery {
+	return &ParallelQuery{values: q.values, err: q.err}
 }
 
 // Where filters a sequence of values based on a predicate function. This
@@ -112,7 +112,8 @@ func (q Query) AsParallel() ParallelQuery {
 // 	flying, err := From(animals).Where(func (a T) (bool, error){
 //		return a.(*Animal).IsFlying, nil
 // 	}).Results()
-func (q Query) Where(f func(T) (bool, error)) (r Query) {
+func (q *Query) Where(f func(T) (bool, error)) (r *Query) {
+	r = &Query{}
 	if q.err != nil {
 		r.err = q.err
 		return r
@@ -143,7 +144,8 @@ func (q Query) Where(f func(T) (bool, error)) (r Query) {
 // 	names, err := From(animals).Select(func (a T) (T, error){
 //		return a.(*Animal).Name, nil
 // 	}).Results()
-func (q Query) Select(f func(T) (T, error)) (r Query) {
+func (q *Query) Select(f func(T) (T, error)) (r *Query) {
+	r = &Query{}
 	if q.err != nil {
 		r.err = q.err
 		return r
@@ -170,7 +172,8 @@ func (q Query) Select(f func(T) (T, error)) (r Query) {
 //
 // Example:
 // 	distinctInts, err := From(integers).Distinct().Results()
-func (q Query) Distinct() (r Query) {
+func (q *Query) Distinct() (r *Query) {
+	r = &Query{}
 	return q.distinct(nil)
 }
 
@@ -183,7 +186,8 @@ func (q Query) Distinct() (r Query) {
 // 	distinctFirstNames, err := From(people).DistinctBy(func (p T) (bool, error){
 //		return p.(*Person).FirstName
 // 	}).Results()
-func (q Query) DistinctBy(f func(T, T) (bool, error)) (r Query) {
+func (q *Query) DistinctBy(f func(T, T) (bool, error)) (r *Query) {
+	r = &Query{}
 	if f == nil {
 		r.err = ErrNilFunc
 		return
@@ -194,7 +198,8 @@ func (q Query) DistinctBy(f func(T, T) (bool, error)) (r Query) {
 // distinct returns distinct elements from the provided source using default
 // equality comparer (==) or a custom equality comparer function. Complexity
 // is O(N).
-func (q Query) distinct(f func(T, T) (bool, error)) (r Query) {
+func (q *Query) distinct(f func(T, T) (bool, error)) (r *Query) {
+	r = &Query{}
 	if q.err != nil {
 		r.err = q.err
 		return r
@@ -253,7 +258,8 @@ func (q Query) distinct(f func(T, T) (bool, error)) (r Query) {
 // Example:
 // 	all, err := From(int[]{1,2,3,4,5}).Union(int[]{3,4,5,6}).Results()
 // 	// all is {1,2,3,4,5,6}
-func (q Query) Union(inputSlice T) (r Query) {
+func (q *Query) Union(inputSlice T) (r *Query) {
+	r = &Query{}
 	if q.err != nil {
 		r.err = q.err
 		return
@@ -297,7 +303,8 @@ func (q Query) Union(inputSlice T) (r Query) {
 // Example:
 // 	both, err := From(int[]{1,2,3,4,5}).Intersect(int[]{3,4,5,6}).Results()
 // 	// both is {3,4,5}
-func (q Query) Intersect(inputSlice T) (r Query) {
+func (q *Query) Intersect(inputSlice T) (r *Query) {
+	r = &Query{}
 	if q.err != nil {
 		r.err = q.err
 		return
@@ -347,7 +354,8 @@ func (q Query) Intersect(inputSlice T) (r Query) {
 // Example:
 // 	diffAB, err := From(int[]{1,2,3,4,5}).Except(int[]{3,4,5,6}).Results()
 // 	// diffAB is {1,2}
-func (q Query) Except(inputSlice T) (r Query) {
+func (q *Query) Except(inputSlice T) (r *Query) {
+	r = &Query{}
 	if q.err != nil {
 		r.err = q.err
 		return
@@ -387,7 +395,7 @@ func (q Query) Except(inputSlice T) (r Query) {
 // 	over18, err := From(students).Where(func (s T)(bool, error){
 //		return s.(*Person).Age > 18, nil
 //	}).Count()
-func (q Query) Count() (count int, err error) {
+func (q *Query) Count() (count int, err error) {
 	return len(q.values), q.err
 }
 
@@ -398,7 +406,7 @@ func (q Query) Count() (count int, err error) {
 // 	over18, err := From(students).CountBy(func (s T)(bool, error){
 //		return s.(*Person).Age > 18, nil
 //	})
-func (q Query) CountBy(f func(T) (bool, error)) (c int, err error) {
+func (q *Query) CountBy(f func(T) (bool, error)) (c int, err error) {
 	if q.err != nil {
 		err = q.err
 		return
@@ -427,7 +435,7 @@ func (q Query) CountBy(f func(T) (bool, error)) (c int, err error) {
 // 	anyOver18, err := From(students).Where(func (s T)(bool, error){
 //		return s.(*Person).Age > 18, nil
 //	}).Any()
-func (q Query) Any() (exists bool, err error) {
+func (q *Query) Any() (exists bool, err error) {
 	return len(q.values) > 0, q.err
 }
 
@@ -438,7 +446,7 @@ func (q Query) Any() (exists bool, err error) {
 // 	anyOver18, err := From(students).AnyWith(func (s T)(bool, error){
 //		return s.(*Person).Age > 18, nil
 //	})
-func (q Query) AnyWith(f func(T) (bool, error)) (exists bool, err error) {
+func (q *Query) AnyWith(f func(T) (bool, error)) (exists bool, err error) {
 	if q.err != nil {
 		err = q.err
 		return
@@ -471,7 +479,7 @@ func (q Query) AnyWith(f func(T) (bool, error)) (exists bool, err error) {
 // 	allOver18, err := From(students).All(func (s T)(bool, error){
 //		return s.(*Person).Age > 18, nil
 //	})
-func (q Query) All(f func(T) (bool, error)) (all bool, err error) {
+func (q *Query) All(f func(T) (bool, error)) (all bool, err error) {
 	if q.err != nil {
 		err = q.err
 		return
@@ -504,7 +512,7 @@ func (q Query) All(f func(T) (bool, error)) (all bool, err error) {
 //	if err == nil {
 //		// use admin.(*Person)
 // 	}
-func (q Query) Single(f func(T) (bool, error)) (single T, err error) {
+func (q *Query) Single(f func(T) (bool, error)) (single T, err error) {
 	if q.err != nil {
 		err = q.err
 		return
@@ -544,7 +552,7 @@ func (q Query) Single(f func(T) (bool, error)) (single T, err error) {
 // 	if err == nil && found {
 //		// use second.(int)
 // 	}
-func (q Query) ElementAt(i int) (elem T, found bool, err error) {
+func (q *Query) ElementAt(i int) (elem T, found bool, err error) {
 	if q.err != nil {
 		err = q.err
 		return
@@ -569,7 +577,7 @@ func (q Query) ElementAt(i int) (elem T, found bool, err error) {
 // 	if err == nil && found {
 //		// use first.(int)
 // 	}
-func (q Query) First() (elem T, found bool, err error) {
+func (q *Query) First() (elem T, found bool, err error) {
 	if q.err != nil {
 		err = q.err
 		return
@@ -591,7 +599,7 @@ func (q Query) First() (elem T, found bool, err error) {
 // 	if err == nil && found {
 //		// use first.(int)
 // 	}
-func (q Query) FirstBy(f func(T) (bool, error)) (elem T, found bool, err error) {
+func (q *Query) FirstBy(f func(T) (bool, error)) (elem T, found bool, err error) {
 	if q.err != nil {
 		err = q.err
 		return
@@ -624,7 +632,7 @@ func (q Query) FirstBy(f func(T) (bool, error)) (elem T, found bool, err error) 
 // 	if err == nil && found {
 //		// use last.(int)
 // 	}
-func (q Query) Last() (elem T, found bool, err error) {
+func (q *Query) Last() (elem T, found bool, err error) {
 	if q.err != nil {
 		err = q.err
 		return
@@ -647,7 +655,7 @@ func (q Query) Last() (elem T, found bool, err error) {
 // 	if err == nil && found {
 //		// use last.(int)
 // 	}
-func (q Query) LastBy(f func(T) (bool, error)) (elem T, found bool, err error) {
+func (q *Query) LastBy(f func(T) (bool, error)) (elem T, found bool, err error) {
 	if q.err != nil {
 		err = q.err
 		return
@@ -676,7 +684,8 @@ func (q Query) LastBy(f func(T) (bool, error)) (elem T, found bool, err error) {
 //
 // Example:
 // 	reversed, err := From([]int{1,2,3,4,5}).Reverse().Results()
-func (q Query) Reverse() (r Query) {
+func (q *Query) Reverse() (r *Query) {
+	r = &Query{}
 	if q.err != nil {
 		r.err = q.err
 		return
@@ -699,7 +708,8 @@ func (q Query) Reverse() (r Query) {
 //	if err == nil {
 //		// arr will be 1, 2, 3
 // 	}
-func (q Query) Take(n int) (r Query) {
+func (q *Query) Take(n int) (r *Query) {
+	r = &Query{}
 	if q.err != nil {
 		r.err = q.err
 		return
@@ -727,7 +737,8 @@ func (q Query) Take(n int) (r Query) {
 //	if err == nil {
 //		// arr will be 10, 40, 50
 // 	}
-func (q Query) TakeWhile(f func(T) (bool, error)) (r Query) {
+func (q *Query) TakeWhile(f func(T) (bool, error)) (r *Query) {
+	r = &Query{}
 	n, err := q.findWhileTerminationIndex(f)
 	if err != nil {
 		r.err = err
@@ -744,7 +755,8 @@ func (q Query) TakeWhile(f func(T) (bool, error)) (r Query) {
 //	if err == nil {
 //		// arr will be 4, 5
 // 	}
-func (q Query) Skip(n int) (r Query) {
+func (q *Query) Skip(n int) (r *Query) {
+	r = &Query{}
 	if q.err != nil {
 		r.err = q.err
 		return
@@ -772,7 +784,8 @@ func (q Query) Skip(n int) (r Query) {
 //	if err == nil {
 //		// arr will be 50, 60, 100
 // 	}
-func (q Query) SkipWhile(f func(T) (bool, error)) (r Query) {
+func (q *Query) SkipWhile(f func(T) (bool, error)) (r *Query) {
+	r = &Query{}
 	n, err := q.findWhileTerminationIndex(f)
 	if err != nil {
 		r.err = err
@@ -781,7 +794,7 @@ func (q Query) SkipWhile(f func(T) (bool, error)) (r Query) {
 	return q.Skip(n)
 }
 
-func (q Query) findWhileTerminationIndex(f func(T) (bool, error)) (n int, err error) {
+func (q *Query) findWhileTerminationIndex(f func(T) (bool, error)) (n int, err error) {
 	if q.err != nil {
 		err = q.err
 		return
@@ -813,7 +826,8 @@ func (q Query) findWhileTerminationIndex(f func(T) (bool, error)) (n int, err er
 // Example:
 //	sorted, err := From([]int{6,1,2,-1,10}).OrderInts().Results()
 //	// sorted = {-1, 1, 2, 6, 10}
-func (q Query) OrderInts() (r Query) {
+func (q *Query) OrderInts() (r *Query) {
+	r = &Query{}
 	if q.err != nil {
 		r.err = q.err
 		return
@@ -837,7 +851,8 @@ func (q Query) OrderInts() (r Query) {
 // Example:
 //	sorted, err := From([]string{"foo", "bar", "", "baz"}).OrderStrings().Results()
 //	// sorted = {"", "bar", "baz", "foo"}
-func (q Query) OrderStrings() (r Query) {
+func (q *Query) OrderStrings() (r *Query) {
+	r = &Query{}
 	if q.err != nil {
 		r.err = q.err
 		return
@@ -859,7 +874,8 @@ func (q Query) OrderStrings() (r Query) {
 // Example:
 //	sorted, err := From([]float64{-1e-9, -1, 1e-9, 1}}).OrderFloat64s().Results()
 //	// sorted = {-1, -1e-9, 1e-9, 1}
-func (q Query) OrderFloat64s() (r Query) {
+func (q *Query) OrderFloat64s() (r *Query) {
+	r = &Query{}
 	if q.err != nil {
 		r.err = q.err
 		return
@@ -883,7 +899,8 @@ func (q Query) OrderFloat64s() (r Query) {
 //	sorted, err := From(people).OrderBy(func (this T, that T) bool {
 //		return this.(*Person).Age < that.(*Person).Age
 // 	}).Results()
-func (q Query) OrderBy(less func(this T, that T) bool) (r Query) {
+func (q *Query) OrderBy(less func(this T, that T) bool) (r *Query) {
+	r = &Query{}
 	if q.err != nil {
 		r.err = q.err
 		return
@@ -897,7 +914,7 @@ func (q Query) OrderBy(less func(this T, that T) bool) (r Query) {
 	sortQ.less = less
 	sortQ.values = make([]T, len(q.values))
 	_ = copy(sortQ.values, q.values)
-	sort.Sort(sortQ)
+	sort.Sort(&sortQ)
 	r.values = sortQ.values
 	return
 }
@@ -916,12 +933,13 @@ func (q Query) OrderBy(less func(this T, that T) bool) (r Query) {
 //
 // resultSelector takes outer element and inner element as inputs
 // and returns a value which will be an element in the resulting query.
-func (q Query) Join(innerSlice T,
+func (q *Query) Join(innerSlice T,
 	outerKeySelector func(T) T,
 	innerKeySelector func(T) T,
 	resultSelector func(
 		outer T,
-		inner T) T) (r Query) {
+		inner T) T) (r *Query) {
+	r = &Query{}
 	if q.err != nil {
 		r.err = q.err
 		return
@@ -976,12 +994,13 @@ func (q Query) Join(innerSlice T,
 //
 // resultSelector takes outer element and inner element as inputs
 // and returns a value which will be an element in the resulting query.
-func (q Query) GroupJoin(innerSlice T,
+func (q *Query) GroupJoin(innerSlice T,
 	outerKeySelector func(T) T,
 	innerKeySelector func(T) T,
 	resultSelector func(
 		outer T,
-		inners []T) T) (r Query) {
+		inners []T) T) (r *Query) {
+	r = &Query{}
 	if q.err != nil {
 		r.err = q.err
 		return
@@ -1037,7 +1056,8 @@ func (q Query) GroupJoin(innerSlice T,
 // Example:
 //	seq, err := From(people).Range(-2, 5).Results()
 // 	// seq is {-2, -1, 0, 1, 2}
-func Range(start, count int) (q Query) {
+func Range(start, count int) (q *Query) {
+	q = &Query{}
 	if count < 0 {
 		q.err = ErrNegativeParam
 		return
@@ -1062,7 +1082,7 @@ func Range(start, count int) (q Query) {
 //	sum, err := From(mixedArr).Sum() // sum is 10.4
 //	// or
 //	sum, err := From([]int{1,2,3,4,5}]).Sum() // sum is 15.0
-func (q Query) Sum() (sum float64, err error) {
+func (q *Query) Sum() (sum float64, err error) {
 	if q.err != nil {
 		err = q.err
 		return
@@ -1125,7 +1145,7 @@ func sumMixed(in []T) (sum float64, err error) {
 //	avg, err := From(mixedArr).Average() // avg is 2.6
 //	// or
 //	avg, err := From([]int{1,2,3,4,5}]).Average() // avg is 3.0
-func (q Query) Average() (avg float64, err error) {
+func (q *Query) Average() (avg float64, err error) {
 	if q.err != nil {
 		err = q.err
 		return
@@ -1148,7 +1168,7 @@ func (q Query) Average() (avg float64, err error) {
 //
 // Example:
 //	min, err := From([]int{1, -100, 10, 0}).MinInt() // min is -1
-func (q Query) MinInt() (min int, err error) {
+func (q *Query) MinInt() (min int, err error) {
 	if q.err != nil {
 		err = q.err
 		return
@@ -1170,7 +1190,7 @@ func (q Query) MinInt() (min int, err error) {
 //
 // Example:
 //	min, err := From([]uint{1, -100, 10, 0}).MinUint() // min is -1
-func (q Query) MinUint() (min uint, err error) {
+func (q *Query) MinUint() (min uint, err error) {
 	if q.err != nil {
 		err = q.err
 		return
@@ -1192,7 +1212,7 @@ func (q Query) MinUint() (min uint, err error) {
 //
 // Example;
 //	min, err := From([]float64{1e-9, 2e10, -1e-10, -1}).MinFloat64() // min is -1.0
-func (q Query) MinFloat64() (min float64, err error) {
+func (q *Query) MinFloat64() (min float64, err error) {
 	if q.err != nil {
 		err = q.err
 		return
@@ -1214,7 +1234,7 @@ func (q Query) MinFloat64() (min float64, err error) {
 //
 // Example:
 //	max, err := From([]int{1, -100, 10, 0}).MaxInt() // max is 10
-func (q Query) MaxInt() (min int, err error) {
+func (q *Query) MaxInt() (min int, err error) {
 	if q.err != nil {
 		err = q.err
 		return
@@ -1236,7 +1256,7 @@ func (q Query) MaxInt() (min int, err error) {
 //
 // Example:
 //	max, err := From([]uint{1, -100, 10, 0}).MaxUint() // max is 10
-func (q Query) MaxUint() (min uint, err error) {
+func (q *Query) MaxUint() (min uint, err error) {
 	if q.err != nil {
 		err = q.err
 		return
@@ -1258,7 +1278,7 @@ func (q Query) MaxUint() (min uint, err error) {
 //
 // Example:
 //	max, err := From([]float64{1e-9, 2e10, -1e-10, -1}).MaxFloat64() // max is 2e10
-func (q Query) MaxFloat64() (min float64, err error) {
+func (q *Query) MaxFloat64() (min float64, err error) {
 	if q.err != nil {
 		err = q.err
 		return
