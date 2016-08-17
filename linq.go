@@ -97,6 +97,15 @@ func (q Query) Results() ([]T, error) {
 	return res, q.err
 }
 
+// StringResults evaluetes the query and returns results as string slice.
+// A type conversion error may occur during evaluation of the query.
+//
+// Example:
+// results, err := From(slice).Select(something).StringResults()
+func (q Query) StringResults() ([]string, error) {
+	return toStrings(q.values)
+}
+
 // AsParallel returns a ParallelQuery from the same source where the query functions
 //  can be executed in parallel for each element of the source with goroutines.
 //
